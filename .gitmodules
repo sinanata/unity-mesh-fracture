@@ -1,0 +1,3 @@
+[submodule "Vendor/unity-ui-document-design-system"]
+	path = Vendor/unity-ui-document-design-system
+	url = https://github.com/sinanata/unity-ui-document-design-system

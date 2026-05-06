@@ -1,0 +1,204 @@
+/* ============================================================================
+   DEMO LAYOUT OVERLAY
+   Screen-relative panel placement and a few overrides on top of the ds-*
+   design system. Loaded after DesignSystem.uss in DemoUI.uxml.
+   ============================================================================ */
+
+/* Transparent root so the 3D scene shows through. The .ds-root class
+   would otherwise paint var(--color-bg) and hide the camera. */
+.demo-root {
+    background-color: rgba(0,0,0,0);
+}
+
+.demo-panel {
+    position: absolute;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+/* Title block has no card surface — sits directly over the 3D scene as
+   floating text. The previous .demo-panel--title rule applied .ds-card +
+   .demo-panel padding around it; replaced by .demo-title-block which
+   only handles position. */
+.demo-title-block {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    max-width: 420px;
+}
+
+/* Credits row under the title — Steam wishlist + asset attribution as
+   inline text links separated by a middle dot. Labels (not Buttons) so
+   the visual sits on the same baseline as the title text without
+   inheriting Unity's default button background / padding / border. */
+.demo-credits {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: var(--space-1);
+}
+.demo-link {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-body-2);
+    -unity-font-style: bold;
+    cursor: link;
+    transition-property: color;
+    transition-duration: var(--transition-fast);
+}
+.demo-link:hover {
+    color: var(--color-primary);
+}
+.demo-credit-sep {
+    color: var(--color-text-disabled);
+    font-size: var(--font-size-body-2);
+    margin-left: var(--space-2);
+    margin-right: var(--space-2);
+}
+
+.demo-panel--instructions {
+    bottom: 16px;
+    left: 16px;
+    max-width: 280px;
+}
+
+.demo-panel--controls {
+    bottom: 16px;
+    right: 16px;
+    min-width: 260px;
+}
+
+/* Promo button row, top-right. flex-wrap so buttons stack to a second row
+   on tablet widths instead of overflowing past the viewport edge. */
+.demo-promo {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 360px;
+}
+.demo-promo > .ds-btn {
+    margin-left: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* Status toast, top-center. Hidden by default (opacity 0); the C# layer
+   adds .is-visible to fade it in, then schedules removal after 1.5 s. */
+.demo-status {
+    position: absolute;
+    top: 70px;
+    align-self: center;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 240ms;
+}
+.demo-status.is-visible {
+    opacity: 1;
+}
+
+.demo-key-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--space-1);
+}
+.demo-key {
+    min-width: 88px;
+    color: var(--color-primary);
+    font-size: var(--font-size-body-2);
+    -unity-font-style: bold;
+    background-color: var(--color-surface-elev);
+    border-radius: var(--radius-sm);
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-right: var(--space-2);
+    -unity-text-align: middle-center;
+}
+.demo-key-desc {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-body-2);
+}
+
+.demo-action-row {
+    flex-direction: row;
+    margin-top: var(--space-2);
+}
+.demo-action-row > .ds-btn {
+    flex-grow: 1;
+    margin-left: var(--space-1);
+    margin-right: var(--space-1);
+}
+
+/* Tighten the design system's .ds-section-label inside the demo panels
+   so the slider / key row sits closer to its small-caps header. */
+.demo-panel .ds-section-label {
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+/* Slider header row — section label on the left, current value on the right.
+   The design system showcase uses sliders without `show-input-field` and
+   surfaces the value as a separate label, because Unity's inline IntegerField /
+   FloatField next to the track inherits the editor theme (white inset box,
+   default font) and won't pick up the .ds-input cascade without scoping each
+   ds-slider rule to also style the inner BaseField. Keeping the label out
+   of the slider matches the showcase pattern. */
+.demo-slider-header {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+.demo-slider-header .ds-section-label {
+    margin: 0;
+}
+.demo-slider-value {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-body-1);
+    -unity-font-style: bold;
+}
+
+/* Bake spinner inside the Fracture All button. Hidden by default, the C#
+   layer toggles `.demo-bake-icon--visible` while bakes are pending so the
+   refresh glyph appears alongside a "Baking..." label and a disabled
+   button surface. The `is-spinning` class is added in tandem and rotates
+   the glyph at 16 ms intervals via DesignSystemRuntime. */
+.demo-bake-icon {
+    display: none;
+}
+.demo-bake-icon--visible {
+    display: flex;
+}
+
+/* The design system's per-variant icon-tint cascade
+   (`.ds-btn--primary .ds-icon { tint: text-on-accent }`) doesn't carry a
+   :disabled override, so a disabled primary button's child icon would
+   render with the dark text-on-accent tint against the surface-elev
+   disabled background — barely visible. Re-tint to text-disabled at
+   higher specificity (0,3,0) than the variant rule (0,2,0). */
+.ds-btn:disabled .ds-icon {
+    -unity-background-image-tint-color: var(--color-text-disabled);
+}
+
+/* Mobile reflow. C# adds .mobile to the root below 768 CSS-px wide. */
+.mobile .demo-panel--instructions {
+    display: none;
+}
+
+.mobile .demo-panel--controls {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-width: auto;
+}
+
+/* On phone-class viewports the title block can clip the promo row when
+   they're each pinned to opposite corners; cap the title's width. */
+.mobile .demo-title-block {
+    max-width: 60%;
+}
