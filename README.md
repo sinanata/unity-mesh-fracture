@@ -2,8 +2,6 @@
 
 Drop-in **Voronoi mesh fracturing for Unity URP**. Pure-C# fragmentation, watertight fragments with separate exterior + cap submeshes, optional Unity-physics bouncing, alpha-fade dissolve — and a pre-bake cache (with cooked convex hulls) so the expensive Voronoi step happens at load time, not at the moment of impact. Open-sourced as part of a small giving-back set of Unity tools — alongside the [UI Toolkit design system](https://github.com/sinanata/unity-ui-document-design-system) and the [cross-platform build orchestrator](https://github.com/sinanata/unity-cross-platform-local-build-orchestrator).
 
-[![Unity Mesh Fracture — interactive WebGL preview. Click any object to fracture it, drag right-mouse to orbit, slider to retune fragment count.](docs/screenshots/mesh_fracture_showcase.gif)](https://sinanata.github.io/unity-mesh-fracture/)
-
 <blockquote>
 <a href="https://store.steampowered.com/app/2269500/"><img src="docs/leap-of-legends-icon.png" align="left" width="70" height="70" alt="Leap of Legends"></a>
 Built for and battle-tested in <strong><a href="https://leapoflegends.com">Leap of Legends</a></strong> — a cross-platform multiplayer game in active development on Steam, Google Play (internal testing), TestFlight, and macOS. Every character that explodes in the game uses this fracturing pipeline. <a href="https://store.steampowered.com/app/2269500/">Wishlist on Steam</a> — public mobile store pages coming soon.
@@ -23,6 +21,8 @@ burst.UseUnityPhysics = true                  →  optional Rigidbody + convex M
 ## Demo
 
 **[▶ Live WebGL preview](https://sinanata.github.io/unity-mesh-fracture/)** — eight pedestals, click any object to fracture it, drag right-mouse to orbit, slider to retune fragment count.
+
+[![Unity Mesh Fracture — interactive WebGL preview. Click any object to fracture it, drag right-mouse to orbit, slider to retune fragment count.](docs/screenshots/mesh_fracture_showcase.gif)](https://sinanata.github.io/unity-mesh-fracture/)
 
 The repo is a complete Unity project — clone, open in Unity 6, press Play. The demo scene auto-spawns:
 
