@@ -2,6 +2,8 @@
 
 Drop-in **Voronoi mesh fracturing for Unity URP**. Pure-C# fragmentation, watertight fragments with separate exterior + cap submeshes, optional Unity-physics bouncing, alpha-fade dissolve — and a pre-bake cache (with cooked convex hulls) so the expensive Voronoi step happens at load time, not at the moment of impact. Open-sourced as part of a small giving-back set of Unity tools — alongside the [UI Toolkit design system](https://github.com/sinanata/unity-ui-document-design-system) and the [cross-platform build orchestrator](https://github.com/sinanata/unity-cross-platform-local-build-orchestrator).
 
+[![Unity Mesh Fracture — interactive WebGL preview. Click any object to fracture it, drag right-mouse to orbit, slider to retune fragment count.](docs/screenshots/mesh_fracture_showcase.gif)](https://sinanata.github.io/unity-mesh-fracture/)
+
 <blockquote>
 <a href="https://store.steampowered.com/app/2269500/"><img src="docs/leap-of-legends-icon.png" align="left" width="70" height="70" alt="Leap of Legends"></a>
 Built for and battle-tested in <strong><a href="https://leapoflegends.com">Leap of Legends</a></strong> — a cross-platform multiplayer game in active development on Steam, Google Play (internal testing), TestFlight, and macOS. Every character that explodes in the game uses this fracturing pipeline. <a href="https://store.steampowered.com/app/2269500/">Wishlist on Steam</a> — public mobile store pages coming soon.
@@ -17,22 +19,6 @@ FragmentCache.TryGet(key, out cached)         →  O(1) impact-time lookup
 new FractureBurst().Initialize(fragments,…)   →  ballistic + tumble + trail + alpha fade
 burst.UseUnityPhysics = true                  →  optional Rigidbody + convex MeshCollider mode
 ```
-
-## Why this exists
-
-Mesh fracturing in Unity is a long-tail problem. Asset-store solutions are expensive and over-featured (rigid bodies, joints, multi-stage cracking). What most games actually want is one beat: **character/object explodes into a handful of fragments, fragments fall under gravity, fragments fade and disappear**. Cheap CPU sim by default; opt-in Unity physics when you need fragments to actually bounce off the world. No multi-stage cracking, no joints, no asset-store-style overhead — just convincing chunks.
-
-This repo is that beat, finished:
-
-- **Pure-C# Voronoi fragmenter.** No native libraries, no editor-only restrictions. Runs at edit time, build time, or runtime — your call. Watertight cells: caps from earlier clip planes get re-clipped + re-tagged by later planes, so even concave / hollow source meshes seal cleanly around the convex intersection.
-- **Pre-bake cache.** Voronoi is O(n²) in fragment count and runs entirely on the CPU. Doing the work on a loading screen turns destruction into a cheap mesh swap. The cache also pre-cooks each fragment's convex `Physics.BakeMesh` hull on the worker frame so the runtime `MeshCollider` assignment skips Unity's hull-cook entirely.
-- **Two-submesh fragments.** Submesh 0 = original surface (keep your character's textured skin). Submesh 1 = cap faces from the cuts (gets a separate "raw interior" material — bone, gore, fresh stone, whatever fits your art direction).
-- **Two simulation modes.** Default: CPU ballistic sim with a cheap `y = -1` floor — zero scene interaction, runs anywhere. `UseUnityPhysics = true`: each fragment gets a `Rigidbody` + convex `MeshCollider` and bounces off whatever colliders the scene has (ground, pedestals, walls). Pair-wise `IgnoreCollision` between siblings stops the depenetration impulse that would otherwise launch shared-boundary fragments skyward at spawn.
-- **Two dissolve trigger modes.** Default time-based: alpha fades over `DissolveDuration` ending at `Lifetime`. Settle-based (`DissolveAfterSettle = true`): fragments come to rest, hold for `SettleHoldDuration`, then fade. If motion never stops, the time-based fallback always fires so chunks fade rather than pop.
-- **No custom shader.** Fragments use stock URP/Lit configured at runtime for transparent + Cull Off + ZWrite-on (`MaterialFactory.ConfigureFractureTransparent` — 10 lines, replicates what URP/Lit's editor inspector calls when you flip the Surface dropdown). Fade animates `_BaseColor.a` 1 → 0. Zero `.shader` assets to ship; one Unity validates on every release.
-- **Progressive build.** `Initialize` captures inputs and pre-computes per-fragment state, then spawns `BUILD_BATCH_SIZE` fragments per `Update` tick instead of all at once — turns a 50–180 ms `Initialize` spike into bite-sized per-frame chunks under the 16 ms budget.
-
-What you don't get: multi-stage cracking, sub-fragmentation, persistent debris. If you need those, look at Obi or RayFire. If you need "boom, debris, gone" with optional bounce physics, low per-impact GC, and a clean URP look, you're in the right place.
 
 ## Demo
 
@@ -81,6 +67,22 @@ copy Tools\Build\config.example.json Tools\Build\config.local.json
 ```
 
 See `Tools/Build/README.md` for the full orchestrator reference (cache recovery, Burst-AOT retry, GitHub Pages first-run setup).
+
+## Why this exists
+
+Mesh fracturing in Unity is a long-tail problem. Asset-store solutions are expensive and over-featured (rigid bodies, joints, multi-stage cracking). What most games actually want is one beat: **character/object explodes into a handful of fragments, fragments fall under gravity, fragments fade and disappear**. Cheap CPU sim by default; opt-in Unity physics when you need fragments to actually bounce off the world. No multi-stage cracking, no joints, no asset-store-style overhead — just convincing chunks.
+
+This repo is that beat, finished:
+
+- **Pure-C# Voronoi fragmenter.** No native libraries, no editor-only restrictions. Runs at edit time, build time, or runtime — your call. Watertight cells: caps from earlier clip planes get re-clipped + re-tagged by later planes, so even concave / hollow source meshes seal cleanly around the convex intersection.
+- **Pre-bake cache.** Voronoi is O(n²) in fragment count and runs entirely on the CPU. Doing the work on a loading screen turns destruction into a cheap mesh swap. The cache also pre-cooks each fragment's convex `Physics.BakeMesh` hull on the worker frame so the runtime `MeshCollider` assignment skips Unity's hull-cook entirely.
+- **Two-submesh fragments.** Submesh 0 = original surface (keep your character's textured skin). Submesh 1 = cap faces from the cuts (gets a separate "raw interior" material — bone, gore, fresh stone, whatever fits your art direction).
+- **Two simulation modes.** Default: CPU ballistic sim with a cheap `y = -1` floor — zero scene interaction, runs anywhere. `UseUnityPhysics = true`: each fragment gets a `Rigidbody` + convex `MeshCollider` and bounces off whatever colliders the scene has (ground, pedestals, walls). Pair-wise `IgnoreCollision` between siblings stops the depenetration impulse that would otherwise launch shared-boundary fragments skyward at spawn.
+- **Two dissolve trigger modes.** Default time-based: alpha fades over `DissolveDuration` ending at `Lifetime`. Settle-based (`DissolveAfterSettle = true`): fragments come to rest, hold for `SettleHoldDuration`, then fade. If motion never stops, the time-based fallback always fires so chunks fade rather than pop.
+- **No custom shader.** Fragments use stock URP/Lit configured at runtime for transparent + Cull Off + ZWrite-on (`MaterialFactory.ConfigureFractureTransparent` — 10 lines, replicates what URP/Lit's editor inspector calls when you flip the Surface dropdown). Fade animates `_BaseColor.a` 1 → 0. Zero `.shader` assets to ship; one Unity validates on every release.
+- **Progressive build.** `Initialize` captures inputs and pre-computes per-fragment state, then spawns `BUILD_BATCH_SIZE` fragments per `Update` tick instead of all at once — turns a 50–180 ms `Initialize` spike into bite-sized per-frame chunks under the 16 ms budget.
+
+What you don't get: multi-stage cracking, sub-fragmentation, persistent debris. If you need those, look at Obi or RayFire. If you need "boom, debris, gone" with optional bounce physics, low per-impact GC, and a clean URP look, you're in the right place.
 
 ## Requirements
 
