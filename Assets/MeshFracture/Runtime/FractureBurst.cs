@@ -70,6 +70,23 @@ namespace MeshFracture
         public Vector3 GravityVector = new Vector3(0f, -25f, 0f);
         /// <summary>If true, locks fragment motion + tumble to the XY plane (side-on 2D). CPU sim only.</summary>
         public bool LockToXY = false;
+        /// <summary>
+        /// Optional plane lock — when this vector is non-zero, every
+        /// fragment's linear velocity is projected onto the plane
+        /// perpendicular to this normal at burst time AND each CPU
+        /// integration tick, and angular velocity is reduced to its
+        /// component along this normal so chunks spin in the locked plane
+        /// rather than tipping out of it. Generalises <see cref="LockToXY"/>
+        /// (LockToXY=true is equivalent to LockPlaneNormal=Vector3.forward)
+        /// for camera-facing sprite billboards: pass <c>Camera.main.transform.forward</c>
+        /// at fracture time and fragments stay in the sprite's flat plane
+        /// regardless of how the camera was oriented when the burst
+        /// spawned. CPU sim only — Unity Rigidbody has no per-axis or
+        /// per-plane constraint that maps cleanly onto an arbitrary
+        /// world-space plane, so callers should also set
+        /// <see cref="UseUnityPhysics"/>=false on sprite-mode bursts.
+        /// </summary>
+        public Vector3 LockPlaneNormal = Vector3.zero;
         /// <summary>Disable trail rendering by setting trail width to 0. Useful for performance-sensitive mobile builds.</summary>
         public bool EnableTrails = true;
 
@@ -249,30 +266,63 @@ namespace MeshFracture
             // center math each tick. The rest of the per-fragment work
             // (GameObject + components) gets deferred to Update.
             float upwardBias = UseUnityPhysics ? 0.1f : 0.4f;
+            bool lockToPlane = LockPlaneNormal.sqrMagnitude > 1e-4f;
+            Vector3 planeNormal = lockToPlane ? LockPlaneNormal.normalized : Vector3.zero;
             for (int i = 0; i < fragmentCount; i++)
             {
                 var frag = fragments[i];
 
                 Vector3 dir = (frag.Centroid - explosionCenter);
-                if (LockToXY) dir.z = 0f;
+                if (lockToPlane) dir = Vector3.ProjectOnPlane(dir, planeNormal);
+                else if (LockToXY) dir.z = 0f;
                 if (dir.sqrMagnitude < 0.001f)
                 {
-                    dir = LockToXY
-                        ? new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), 0f)
-                        : new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                    if (lockToPlane)
+                    {
+                        // Fragment sits on the explosion center; pick a
+                        // random in-plane direction so the burst still
+                        // spreads outward instead of stalling.
+                        Vector3 random3 = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                        dir = Vector3.ProjectOnPlane(random3, planeNormal);
+                        if (dir.sqrMagnitude < 0.001f) dir = Vector3.up;  // pathological: random was parallel to normal
+                    }
+                    else
+                    {
+                        dir = LockToXY
+                            ? new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), 0f)
+                            : new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                    }
                 }
                 dir = dir.normalized;
 
-                Vector3 randomSpread = LockToXY
-                    ? new Vector3(Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f), 0f)
-                    : new Vector3(Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f));
+                Vector3 randomSpread = new Vector3(
+                    Random.Range(-0.3f, 0.3f),
+                    Random.Range(-0.3f, 0.3f),
+                    Random.Range(-0.3f, 0.3f));
+                if (lockToPlane) randomSpread = Vector3.ProjectOnPlane(randomSpread, planeNormal);
+                else if (LockToXY) randomSpread.z = 0f;
+
                 Vector3 velocity = (dir + randomSpread).normalized * explosionForce
                     + Vector3.up * (explosionForce * upwardBias);
-                if (LockToXY) velocity.z = 0f;
+                if (lockToPlane) velocity = Vector3.ProjectOnPlane(velocity, planeNormal);
+                else if (LockToXY) velocity.z = 0f;
 
-                Vector3 angVel = LockToXY
-                    ? new Vector3(0f, 0f, Random.Range(-10f, 10f))
-                    : new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f));
+                Vector3 angVel;
+                if (lockToPlane)
+                {
+                    // Spin around the plane normal so chunks rotate IN the
+                    // locked plane (camera POV: 2D twirl) rather than
+                    // tumbling out of it.
+                    angVel = planeNormal * Random.Range(-10f, 10f);
+                }
+                else if (LockToXY)
+                {
+                    angVel = new Vector3(0f, 0f, Random.Range(-10f, 10f));
+                }
+                else
+                {
+                    angVel = new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f));
+                }
 
                 cpuStates[i] = new FragmentState
                 {
@@ -584,16 +634,28 @@ namespace MeshFracture
 
         private void SimulateCPU(float dt)
         {
+            bool lockToPlane = LockPlaneNormal.sqrMagnitude > 1e-4f;
+            Vector3 planeNormal = lockToPlane ? LockPlaneNormal.normalized : Vector3.zero;
             for (int i = 0; i < fragmentCount; i++)
             {
                 ref var s = ref cpuStates[i];
                 if (s.settled) continue;
 
                 s.velocity += GravityVector * dt;
-                if (LockToXY) s.velocity.z = 0f;
+                if (lockToPlane) s.velocity = Vector3.ProjectOnPlane(s.velocity, planeNormal);
+                else if (LockToXY) s.velocity.z = 0f;
 
                 Vector3 newPos = s.position + s.velocity * dt;
-                if (LockToXY) newPos.z = s.position.z;
+                if (lockToPlane)
+                {
+                    // Keep the fragment on the same plane it spawned on — drift
+                    // along the normal would otherwise compound under gravity
+                    // for non-vertical lock planes (camera looking up / down).
+                    Vector3 fromStart = newPos - s.position;
+                    fromStart = Vector3.ProjectOnPlane(fromStart, planeNormal);
+                    newPos = s.position + fromStart;
+                }
+                else if (LockToXY) newPos.z = s.position.z;
 
                 // Cheap floor at y = -1. For collision against actual world
                 // geometry, set UseUnityPhysics=true — that swaps the whole
@@ -614,7 +676,13 @@ namespace MeshFracture
                 // Quaternion.Euler(angVel * dt) at small step sizes and
                 // doesn't suffer from gimbal-lock artefacts when the
                 // angular velocity is near a singular direction.
-                if (LockToXY)
+                if (lockToPlane)
+                {
+                    // Project angular velocity onto plane normal — chunks
+                    // spin in the locked plane only, no out-of-plane wobble.
+                    s.angularVelocity = planeNormal * Vector3.Dot(s.angularVelocity, planeNormal);
+                }
+                else if (LockToXY)
                 {
                     s.angularVelocity.x = 0f;
                     s.angularVelocity.y = 0f;

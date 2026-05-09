@@ -82,6 +82,15 @@ namespace MeshFractureDemo
             // (kenney character) this is the difference between a 50–180 ms
             // per-fracture hitch and ≤10 ms.
             burst.PreBakedColliderMeshes = cached.ColliderMeshes;
+            // Sprite destructibles get plane-locked, CPU-sim, gentler-
+            // gravity treatment so fragments stay in the billboard plane
+            // and read as "2D paper pieces". Standard 3D destructibles
+            // skip this hook and keep the default Unity-physics path.
+            // Configure BEFORE Initialize so the per-fragment velocity
+            // pre-compute path projects onto the lock plane.
+            var sprite = GetComponent<SpriteCharacterTarget>();
+            if (sprite != null) sprite.ConfigureBurst(burst);
+
             burst.Initialize(
                 fragments,
                 exteriorMaterial: ResolveExteriorMaterial(),
