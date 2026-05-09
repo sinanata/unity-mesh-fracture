@@ -1,6 +1,6 @@
 # Unity Mesh Fracture
 
-Drop-in **Voronoi mesh fracturing for Unity URP**. Pure-C# fragmentation, watertight fragments with separate exterior + cap submeshes, optional Unity-physics bouncing, alpha-fade dissolve — and a pre-bake cache (with cooked convex hulls) so the expensive Voronoi step happens at load time, not at the moment of impact. Open-sourced as part of a small giving-back set of Unity tools — alongside the [UI Toolkit design system](https://github.com/sinanata/unity-ui-document-design-system) and the [cross-platform build orchestrator](https://github.com/sinanata/unity-cross-platform-local-build-orchestrator).
+Drop-in **Voronoi mesh fracturing for Unity URP**. Pure-C# fragmentation, watertight fragments with separate exterior + cap submeshes, optional Unity-physics bouncing, alpha-fade dissolve — and a pre-bake cache (with cooked convex hulls) so the expensive Voronoi step happens at load time, not at the moment of impact. Open-sourced as part of a small giving-back set of Unity tools — alongside the [UI Toolkit design system](https://github.com/sinanata/unity-ui-document-design-system), the [3D-to-sprite baker](https://github.com/sinanata/unity-3d-to-sprite-baker), and the [cross-platform build orchestrator](https://github.com/sinanata/unity-cross-platform-local-build-orchestrator).
 
 <blockquote>
 <a href="https://store.steampowered.com/app/2269500/"><img src="docs/leap-of-legends-icon.png" align="left" width="70" height="70" alt="Leap of Legends"></a>
@@ -28,32 +28,37 @@ The repo is a complete Unity project — clone, open in Unity 6, press Play. The
 
 - 2 primitives (cube, sphere) and 5 [Kenney pirate-kit](https://kenney.nl/assets/pirate-kit) props (barrel, crate, chest, cannon, rocks) for the static-mesh path.
 - 1 [Kenney character](https://kenney.nl/assets/animated-characters-1) for the **`SkinnedMeshRenderer.BakeMesh`** path — fragments match whatever pose the animator was in at the moment of impact.
+- **4 sprite destructibles** — Kenney AC2 characters (skater m/f, criminal, cyborg) baked at scene start through the [`unity-3d-to-sprite-baker`](https://github.com/sinanata/unity-3d-to-sprite-baker) submodule and rendered as thin-card meshes. Click any of them to fracture the sprite-card into 2D pieces; each fragment carries a slice of the original atlas UVs, so the burst plays as a sprite shattering rather than 3D fragments. Demonstrates the joint pipeline — same destruction code path as the 3D objects, but the visual is a baked sprite atlas.
 - A UI Toolkit overlay (fragment-count slider, explosion-force slider, trails toggle, fracture-all / restore-all buttons, hotkey legend) authored against the [Unity UI Toolkit Design System](https://github.com/sinanata/unity-ui-document-design-system) — same dark token palette, same `.ds-btn` / `.ds-slider` / `.ds-toast` components used in [Leap of Legends](https://leapoflegends.com).
 
 ### Cloning this demo project
 
-The demo's UI consumes the design system as a git submodule (vendored at `Vendor/unity-ui-document-design-system`) and links the drop-in folder into `Assets/DesignSystem` via a per-clone OS link. Pure-runtime consumers of the fracturer (the recipe in [Installation](#installation) below) don't need the design system — only this repo's demo scene does.
+The demo consumes two sibling Unity packages as git submodules (vendored under `Vendor/`) and links each drop-in folder into `Assets/` via a per-clone OS link. Pure-runtime consumers of the fracturer (the recipe in [Installation](#installation) below) don't need either submodule — only this repo's demo scene does.
 
 ```bash
 git clone --recurse-submodules https://github.com/sinanata/unity-mesh-fracture
 cd unity-mesh-fracture
 ```
 
-Then create the link from `Assets/DesignSystem` to the vendored copy:
+Then create the per-clone links from `Assets/` to the vendored copies:
 
 ```powershell
-# Windows — directory junction (no admin / Developer Mode required)
+# Windows — directory junctions (no admin / Developer Mode required)
 cmd /c mklink /J Assets\DesignSystem Vendor\unity-ui-document-design-system\Assets\DesignSystem
+cmd /c mklink /J Assets\SpriteBaker  Vendor\unity-3d-to-sprite-baker\Assets\SpriteBaker
 ```
 
 ```bash
-# macOS / Linux — symbolic link
+# macOS / Linux — symbolic links
 ln -s ../Vendor/unity-ui-document-design-system/Assets/DesignSystem Assets/DesignSystem
+ln -s ../Vendor/unity-3d-to-sprite-baker/Assets/SpriteBaker         Assets/SpriteBaker
 ```
 
-The junction / symlink itself is gitignored; each contributor re-runs the command after their first clone. Open in Unity 6000.3.8f1 (or compatible) and press Play in `Assets/Demo/Scenes/MeshFractureDemo.unity`.
+The junctions / symlinks themselves are gitignored; each contributor re-runs the commands after their first clone. Open in Unity 6000.3.8f1 (or compatible) and press Play in `Assets/Demo/Scenes/MeshFractureDemo.unity`.
 
-If you forgot `--recurse-submodules`, run `git submodule update --init` after the fact, then create the link.
+If you forgot `--recurse-submodules`, run `git submodule update --init --recursive` after the fact, then create the links.
+
+The 4 sprite destructibles are wired in `Assets/Demo/Runtime/SpriteCharacterTarget.cs` (~170 lines) — bakes the Kenney character through the sprite-baker, then displays the atlas on a thin-box mesh that the existing `MeshFragmenter` cuts at click time.
 
 For a minimum-viable example to wire the fracturer into your own scene, read `Assets/MeshFracture/Demo/MeshFractureDemo.cs` — ~140 lines, shows the full pipeline (pre-bake at `Start`, look up at impact, spawn `FractureBurst`).
 

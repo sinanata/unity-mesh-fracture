@@ -178,9 +178,21 @@ namespace MeshFractureDemo
         /// True once <see cref="FragmentCache"/> holds the fragments for
         /// the target's current FragmentCount. Polled by DemoBootstrap's
         /// FractureAll coroutine so it can wait out the pre-bake before
-        /// firing every burst at once.
+        /// firing every burst at once. Sprite characters extend this to
+        /// also wait for sprite-baker's atlas — without that, a fast click
+        /// during the first ~10 frames after Start would fracture the
+        /// placeholder grey material instead of the baked sprite.
         /// </summary>
-        public bool IsBakeReady => FragmentCache.TryGet(_bakedKey, out _);
+        public bool IsBakeReady
+        {
+            get
+            {
+                if (!FragmentCache.TryGet(_bakedKey, out _)) return false;
+                var sprite = GetComponent<SpriteCharacterTarget>();
+                if (sprite != null && !sprite.IsAtlasReady) return false;
+                return true;
+            }
+        }
 
         void BakeSync(int count)
         {

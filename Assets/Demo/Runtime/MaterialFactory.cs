@@ -107,6 +107,18 @@ namespace MeshFractureDemo
             return _kenneyMat;
         }
 
+        // ── Sprite placeholder (shown briefly while the atlas bakes) ──────
+        // Solid neutral grey on URP/Lit so the sprite character isn't
+        // invisible during the ~1-frame async-bake gap. Caller (SpriteCharacterTarget)
+        // swaps the renderer's sharedMaterial to the baked atlas's material
+        // once SpriteAtlasCache.TryGet returns true.
+        public static Material SpritePlaceholderMaterial()
+        {
+            var mat = MakeLit(new Color(0.40f, 0.42f, 0.48f), smoothness: 0.10f);
+            mat.name = "SpritePlaceholder";
+            return mat;
+        }
+
         // ── Character skin (kenney animated-characters-1) ──────────────────
 
         public static Material CharacterSkinMaterial(Texture2D skin)

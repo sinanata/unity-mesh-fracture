@@ -109,7 +109,66 @@ namespace MeshFractureDemo
                 Build = BuildKenneyCharacter,
             });
 
+            // ── Sprite destructibles — joint sprite-baker × mesh-fracture ──
+            // Each is the same Kenney AC2 character baked to a single-frame
+            // sprite atlas (different skin per instance), then displayed on
+            // a thin-box mesh whose front face carries the atlas UVs. The
+            // Voronoi fracturer cuts the thin box; each fragment inherits
+            // a slice of the original UVs, so the burst plays as the sprite
+            // shattering into 2D pieces. See SpriteCharacterTarget for the
+            // bake → mesh-swap orchestration.
+            //
+            // The interior tint reads as the back-face / cut-edge colour of
+            // a tumbling sprite chunk; a desaturated dark grey blends with
+            // the typical Kenney palette without competing with the
+            // character's exterior colours.
+            list.Add(SpriteCharDef("Sprite Skater M",  "skaterMaleA"));
+            list.Add(SpriteCharDef("Sprite Skater F",  "skaterFemaleA"));
+            list.Add(SpriteCharDef("Sprite Criminal",  "criminalMaleA"));
+            list.Add(SpriteCharDef("Sprite Cyborg",    "cyborgFemaleA"));
+
             return list;
+        }
+
+        static Definition SpriteCharDef(string display, string skinResource)
+        {
+            return new Definition
+            {
+                DisplayName          = display,
+                Scale                = 1f,                // SpriteCharacterTarget owns dimensions
+                DefaultFragmentCount = 8,
+                InteriorColor        = new Color(0.20f, 0.20f, 0.22f),
+                IsSkinned            = false,             // source is a thin-box static mesh
+                SolidifyForFragment  = false,             // already has volume (~0.12u thick)
+                Build                = () => BuildSpriteCharacter(display, skinResource),
+            };
+        }
+
+        static GameObject BuildSpriteCharacter(string display, string skinResourceName)
+        {
+            var go = new GameObject(display);
+
+            var capturePrefab = Resources.Load<GameObject>("Models/characterMedium");
+            var skin          = Resources.Load<Texture2D>($"Models/Skins/{skinResourceName}");
+            if (capturePrefab == null || skin == null)
+            {
+                Debug.LogWarning($"[MeshFractureDemo] Sprite character {display}: missing prefab or skin (Models/Skins/{skinResourceName}). Falling back to a placeholder cube.");
+                Object.Destroy(go);
+                var fallback = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                fallback.name = display;
+                Object.Destroy(fallback.GetComponent<Collider>());
+                return fallback;
+            }
+
+            // Bake key derived from the display name so it's stable across
+            // scene reloads and unique per (character, skin) combo. The
+            // SpriteAtlasBaker dedups requests by key, so multiple instances
+            // of the same skin would share one atlas — but we use distinct
+            // skins so each gets its own bake.
+            int seed = display.GetHashCode();
+            var ctrl = go.AddComponent<SpriteCharacterTarget>();
+            ctrl.Setup(capturePrefab, skin, display, seed);
+            return go;
         }
 
         // =================================================================

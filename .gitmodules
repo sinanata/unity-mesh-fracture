@@ -4,3 +4,6 @@
 [submodule "Tools/.orchestrator"]
 	path = Tools/.orchestrator
 	url = https://github.com/sinanata/unity-cross-platform-local-build-orchestrator.git
+[submodule "Vendor/unity-3d-to-sprite-baker"]
+	path = Vendor/unity-3d-to-sprite-baker
+	url = https://github.com/sinanata/unity-3d-to-sprite-baker.git

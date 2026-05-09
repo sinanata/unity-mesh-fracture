@@ -20,6 +20,14 @@ Tools/Build/output/
 Assets/DesignSystem
 Assets/DesignSystem.meta
 
+# Vendored sprite baker — same per-clone pattern as the design system:
+#   git submodule update --init Vendor/unity-3d-to-sprite-baker
+#   mklink /J Assets\SpriteBaker Vendor\unity-3d-to-sprite-baker\Assets\SpriteBaker
+# Powers the 4 sprite destructibles in the demo (3D character → sprite atlas
+# at start, then fracture the sprite quad into 2D pieces).
+Assets/SpriteBaker
+Assets/SpriteBaker.meta
+
 # Visual Studio / Rider
 .vs/
 .idea/

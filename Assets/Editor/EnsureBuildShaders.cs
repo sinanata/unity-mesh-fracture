@@ -43,6 +43,12 @@ namespace MeshFractureDemo.EditorTools
             "Universal Render Pipeline/Lit",
             "Universal Render Pipeline/Simple Lit",
             "Universal Render Pipeline/Unlit",
+            // Sprite-baker's atlas-cutout shader. Pulled in by the four
+            // sprite destructibles' AnimatedSpriteRenderer; without this,
+            // shader stripping drops it on WebGL and the baked atlas
+            // material falls back to URP/Unlit (opaque background, sprite
+            // silhouette is no longer alpha-cut).
+            "SpriteBaker/AtlasCutout",
         };
 
         // Run before any other preprocessor — shader stripping happens
