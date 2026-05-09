@@ -177,6 +177,21 @@ namespace MeshFractureDemo
             // still renders as a neutral grey rather than a tinted ghost.
             mat.SetColor("_BaseColor", Color.white);
 
+            // Detect whether the source material is alpha-clipped — sprite
+            // atlas materials are (URP/Unlit + _AlphaClip = 1, _Cutoff = 0.5),
+            // and the alpha-clip silhouette IS the visual identity of the
+            // sprite. Without preserving it, fragments rendered with a
+            // straight alpha-blend show the soft sub-clip-threshold halo
+            // around the silhouette as a colorful semi-transparent fringe —
+            // user-visible as "edges still colorful in fractured meshes of
+            // sprites" after the front-face UV fix landed.
+            bool sourceAlphaClip = source != null
+                                   && source.HasProperty("_AlphaClip")
+                                   && source.GetFloat("_AlphaClip") > 0.5f;
+            float sourceCutoff = sourceAlphaClip && source.HasProperty("_Cutoff")
+                ? source.GetFloat("_Cutoff")
+                : 0.5f;
+
             if (source != null)
             {
                 if (source.HasProperty("_BaseColor"))
@@ -199,7 +214,7 @@ namespace MeshFractureDemo
                 }
             }
 
-            ConfigureFractureTransparent(mat);
+            ConfigureFractureTransparent(mat, sourceAlphaClip, sourceCutoff);
             return mat;
         }
 
@@ -219,7 +234,9 @@ namespace MeshFractureDemo
             mat.SetColor("_BaseColor", tint);
             mat.SetTexture("_BaseMap", Texture2D.whiteTexture);
             mat.SetVector("_BaseMap_ST", new Vector4(1f, 1f, 0f, 0f));
-            ConfigureFractureTransparent(mat);
+            // Interior caps never carry a sprite atlas, so they don't need
+            // alpha-clip — alpha-blend alone gives a clean fade-out.
+            ConfigureFractureTransparent(mat, alphaClip: false, cutoff: 0.5f);
             return mat;
         }
 
@@ -250,13 +267,14 @@ namespace MeshFractureDemo
         // fragment behind a closer fragment during the overlap of fade-
         // outs gets z-occluded instead of alpha-mixing through it —
         // acceptable for chunk debris that's spread out on screen.
-        static void ConfigureFractureTransparent(Material mat)
+        static void ConfigureFractureTransparent(Material mat, bool alphaClip = false, float cutoff = 0.5f)
         {
             // Surface / blend mode floats — drive URP/Lit's per-pass blend
             // state.
             mat.SetFloat("_Surface",   1f);   // Transparent
             mat.SetFloat("_Blend",     0f);   // Alpha (vs. Premultiply / Additive / Multiply)
-            mat.SetFloat("_AlphaClip", 0f);
+            mat.SetFloat("_AlphaClip", alphaClip ? 1f : 0f);
+            if (alphaClip) mat.SetFloat("_Cutoff", cutoff);
             mat.SetFloat("_Cull",      0f);   // Off — both faces visible
             mat.SetFloat("_SrcBlend",  (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
             mat.SetFloat("_DstBlend",  (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
@@ -268,11 +286,22 @@ namespace MeshFractureDemo
             // symptom — fragments either look fully solid all the way to
             // alpha=0 (alpha-test) or are placed in the wrong z-sorting
             // bucket relative to the rest of the transparent queue.
+            //
+            // Sprite atlas fragments enable BOTH _ALPHATEST_ON and
+            // _SURFACE_TYPE_TRANSPARENT — URP/Lit's combined path runs the
+            // alpha-test discard FIRST (drops sub-cutoff texels: that's the
+            // sprite silhouette mask) and alpha-blends the surviving
+            // pixels over the rest of the scene. Without alpha-test, the
+            // soft halo of the silhouette renders as a colored semi-
+            // transparent fringe ("edges still colorful").
             mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            mat.DisableKeyword("_ALPHATEST_ON");
+            if (alphaClip) mat.EnableKeyword("_ALPHATEST_ON");
+            else           mat.DisableKeyword("_ALPHATEST_ON");
             mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.SetOverrideTag("RenderType", "Transparent");
-            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.SetOverrideTag("RenderType", alphaClip ? "TransparentCutout" : "Transparent");
+            mat.renderQueue = alphaClip
+                ? (int)UnityEngine.Rendering.RenderQueue.AlphaTest
+                : (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
 
         // ── Internals ──────────────────────────────────────────────────────

@@ -100,9 +100,16 @@ namespace MeshFractureDemo
                 Rows            = new[] { new SpriteAnimRow { Row = 0, ClipName = "", SingleFrame = true } },
                 FramePixelSize  = 256,
                 FrameRate       = 1,
-                // Kenney AC2 prefab is authored facing -Z; rotate 180° so the atlas
-                // captures the FRONT of the character on the textured face.
-                CaptureRotation = Quaternion.Euler(0f, 180f, 0f),
+                // Empirically, the prefab's authored facing direction relative
+                // to sprite-baker's yaw=0 bake camera (positioned at +Z looking
+                // toward -Z) means an identity rotation captures the character's
+                // face. The earlier 180° "flip to front" was inverted: it
+                // landed the camera on the back of the head. Match the live
+                // 3D character's same-direction rotation in DemoTargetCatalog.
+                // BuildKenneyCharacter so the orbit camera sees the FRONT of
+                // both the sprite (via billboard) and the live mesh at the
+                // default angle.
+                CaptureRotation = Quaternion.identity,
                 Lighting        = CaptureLighting.Default,
                 BackgroundColor = Color.clear,
                 PreCaptureCallback = ApplySkin,

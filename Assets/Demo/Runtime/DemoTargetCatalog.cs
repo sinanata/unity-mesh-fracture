@@ -248,6 +248,16 @@ namespace MeshFractureDemo
             var host = Object.Instantiate(prefab);
             host.name = "Character";
             host.transform.localScale = Vector3.one * 1.3f;
+            // The Kenney AC2 prefab in its authored orientation puts the
+            // character's BACK toward the orbit camera at this demo's
+            // default angle (yaw=30, pitch=20 → camera on +X +Y +Z). Rotate
+            // 180° around Y so the FRONT faces the default camera position
+            // — the user sees a face, not a back of head, on first load. The
+            // sprite cards (built via SpriteCharacterTarget) keep their bake
+            // CaptureRotation=identity for the same reason; both the live
+            // mesh and the baked sprite end up showing the same canonical
+            // front view.
+            host.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
 
             var skin = Resources.Load<Texture2D>("Models/Skins/skaterMaleA");
             ApplyCharacterSkin(host, skin);
