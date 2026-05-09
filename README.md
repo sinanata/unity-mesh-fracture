@@ -59,14 +59,20 @@ For a minimum-viable example to wire the fracturer into your own scene, read `As
 
 ### Build the WebGL preview locally
 
+The build flow lives in a shared cross-platform orchestrator vendored as a submodule at `Tools/.orchestrator/` — clone with submodules so `Build-Demo.ps1`'s shim resolves:
+
 ```powershell
+git clone --recurse-submodules https://github.com/sinanata/unity-mesh-fracture
+# or, after a plain clone:
+git submodule update --init --recursive
+
 copy Tools\Build\config.example.json Tools\Build\config.local.json
 # Edit unity.windowsEditorPath if Unity isn't in C:\Program Files\Unity\Hub\Editor\6000.3.8f1\
 .\Tools\Build\Build-Demo.ps1 -Serve     # build + serve at http://localhost:3000
 .\Tools\Build\Build-Demo.ps1 -Deploy    # build + force-push to gh-pages
 ```
 
-See `Tools/Build/README.md` for the full orchestrator reference (cache recovery, Burst-AOT retry, GitHub Pages first-run setup).
+`Build-Demo.ps1` is a thin shim — the heavy lifting (lockfile cleanup, Burst-AOT auto-retry, live progress, deploy worktree) lives in [`unity-cross-platform-local-build-orchestrator`](https://github.com/sinanata/unity-cross-platform-local-build-orchestrator). See `Tools/Build/README.md` for daily usage and the orchestrator's README for the full reference.
 
 ## Why this exists
 
